@@ -54,17 +54,20 @@ const onClose = () => {
 
 				<div :class="$style.checkboxWrapper">
 					<N8nCheckbox v-model="accepted" data-test-id="eula-checkbox">
-						<span>
-							{{ locale.baseText('settings.usageAndPlan.dialog.eula.checkbox.label') }}
-							{{ ' ' }}
-							<a
-								:href="eulaUrl"
-								target="_blank"
-								rel="noopener noreferrer"
-								data-test-id="eula-link"
-								>{{ locale.baseText('settings.usageAndPlan.dialog.eula.link.text') }}</a
-							>.
-						</span>
+						<template #label>
+							<span>
+								{{ locale.baseText('settings.usageAndPlan.dialog.eula.checkbox.label') }}
+								{{ ' ' }}
+								<a
+									:href="eulaUrl"
+									target="_blank"
+									rel="noopener noreferrer"
+									data-test-id="eula-link"
+								>
+									{{ locale.baseText('settings.usageAndPlan.dialog.eula.link.text') }} </a
+								>.
+							</span>
+						</template>
 					</N8nCheckbox>
 				</div>
 			</div>
@@ -72,11 +75,11 @@ const onClose = () => {
 
 		<template #footer>
 			<div :class="$style.footerActions">
-				<N8nButton type="secondary" data-test-id="eula-cancel-button" @click="onCancel">
+				<N8nButton variant="subtle" data-test-id="eula-cancel-button" @click="onCancel">
 					{{ locale.baseText('settings.usageAndPlan.dialog.eula.button.cancel') }}
 				</N8nButton>
 				<N8nButton
-					type="primary"
+					variant="solid"
 					:disabled="isAcceptDisabled"
 					data-test-id="eula-accept-button"
 					@click="onAccept"

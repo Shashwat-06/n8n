@@ -48,6 +48,7 @@ export interface ProgressReporter {
 	progress: (message: string, data?: Record<string, unknown>) => void;
 	complete: <T>(output: T) => void;
 	error: (error: ToolError) => void;
+	setCustomTitle: (title: string) => void;
 	createBatchReporter: (scope: string) => BatchReporter;
 }
 
@@ -147,6 +148,16 @@ export interface RemoveConnectionOutput {
 }
 
 /**
+ * Output type for rename node tool
+ */
+export interface RenameNodeOutput {
+	nodeId: string;
+	oldName: string;
+	newName: string;
+	message: string;
+}
+
+/**
  * Description of a workflow example we have found
  */
 export interface WorkflowMetadata {
@@ -189,5 +200,33 @@ export interface GetWorkflowExamplesOutput {
 export interface GetNodeConfigurationExamplesOutput {
 	nodeType: string;
 	totalFound: number;
+	message: string;
+}
+
+/**
+ * Output type for get execution schema tool
+ */
+export interface GetExecutionSchemaOutput {
+	found: boolean;
+	count: number;
+	message: string;
+}
+
+/**
+ * Output type for get execution logs tool
+ */
+export interface GetExecutionLogsOutput {
+	hasError: boolean;
+	lastNodeExecuted?: string;
+	nodesWithData: number;
+	message: string;
+}
+
+/**
+ * Output type for get expression data mapping tool
+ */
+export interface GetExpressionDataMappingOutput {
+	found: boolean;
+	nodesWithExpressions: number;
 	message: string;
 }

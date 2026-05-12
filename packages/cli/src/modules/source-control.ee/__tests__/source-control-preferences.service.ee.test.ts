@@ -3,7 +3,7 @@ import type { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings, Cipher } from 'n8n-core';
-import { readFile, access, mkdir } from 'fs/promises';
+import { readFile, writeFile, access, mkdir } from 'fs/promises';
 import os from 'os';
 import path from 'path';
 
@@ -40,6 +40,26 @@ describe('SourceControlPreferencesService', () => {
 		expect(validationResult).toBeTruthy();
 	});
 
+	describe('branchName validation', () => {
+		it.each(['main', 'develop', 'feature/my-branch', 'release-1.0', 'v2.3.4'])(
+			'should accept valid branch name: %s',
+			async (branchName) => {
+				await expect(
+					service.validateSourceControlPreferences({ branchName }),
+				).resolves.not.toThrow();
+			},
+		);
+
+		it.each(['--option-like-value', '-flag', '--receive-pack=cmd', '--upload-pack=cmd'])(
+			'should reject branch name that does not start with an alphanumeric character: %s',
+			async (branchName) => {
+				await expect(service.validateSourceControlPreferences({ branchName })).rejects.toThrow(
+					'Invalid source control preferences',
+				);
+			},
+		);
+	});
+
 	describe('line ending normalization', () => {
 		let tempDir: string;
 
@@ -55,7 +75,7 @@ describe('SourceControlPreferencesService', () => {
 			const expectedNormalizedKey = keyWithCRLF.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
 			const mockCipher = mock<Cipher>();
-			mockCipher.decrypt.mockReturnValue(keyWithCRLF);
+			mockCipher.decryptV2.mockResolvedValue(keyWithCRLF);
 
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
@@ -87,7 +107,7 @@ describe('SourceControlPreferencesService', () => {
 				'-----BEGIN OPENSSH PRIVATE KEY-----\r\ntest\rkey\r\ndata\r-----END OPENSSH PRIVATE KEY-----\n';
 
 			const mockCipher = mock<Cipher>();
-			mockCipher.decrypt.mockReturnValue(keyWithMixedEndings);
+			mockCipher.decryptV2.mockResolvedValue(keyWithMixedEndings);
 
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
@@ -121,7 +141,7 @@ describe('SourceControlPreferencesService', () => {
 				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest\nkey\ndata\n-----END OPENSSH PRIVATE KEY-----\n';
 
 			const mockCipher = mock<Cipher>();
-			mockCipher.decrypt.mockReturnValue(keyWithLF);
+			mockCipher.decryptV2.mockResolvedValue(keyWithLF);
 
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
@@ -161,7 +181,7 @@ describe('SourceControlPreferencesService', () => {
 				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
 
 			const mockCipher = mock<Cipher>();
-			mockCipher.decrypt.mockReturnValue(testKey);
+			mockCipher.decryptV2.mockResolvedValue(testKey);
 
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
@@ -217,7 +237,7 @@ describe('SourceControlPreferencesService', () => {
 				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-content\n-----END OPENSSH PRIVATE KEY-----\n';
 
 			const mockCipher = mock<Cipher>();
-			mockCipher.decrypt.mockReturnValue(testKey);
+			mockCipher.decryptV2.mockResolvedValue(testKey);
 
 			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
 			const service = new SourceControlPreferencesService(
@@ -382,7 +402,7 @@ describe('SourceControlPreferencesService', () => {
 					loadOnStartup: false,
 				}),
 			);
-			mockCipher.decrypt.mockImplementation((value) => `decrypted-${value}`);
+			mockCipher.decryptV2.mockImplementation(async (value) => `decrypted-${value}`);
 
 			const result = await service.getDecryptedHttpsCredentials();
 
@@ -390,6 +410,50 @@ describe('SourceControlPreferencesService', () => {
 				username: 'decrypted-encryptedUser',
 				password: 'decrypted-encryptedPass',
 			});
+		});
+	});
+
+	describe('resetKnownHosts', () => {
+		let tempDir: string;
+		let sshFolder: string;
+
+		beforeEach(async () => {
+			tempDir = path.join(os.tmpdir(), 'n8n-test-' + Date.now());
+			sshFolder = path.join(tempDir, 'ssh');
+			await mkdir(sshFolder, { recursive: true });
+		});
+
+		it('should delete the known_hosts file when it exists', async () => {
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
+			const testService = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			);
+
+			const knownHostsPath = path.join(sshFolder, 'known_hosts');
+			await writeFile(knownHostsPath, 'github.com ssh-rsa AAAA...\n');
+
+			await expect(access(knownHostsPath)).resolves.toBeUndefined();
+
+			await testService.resetKnownHosts();
+
+			await expect(access(knownHostsPath)).rejects.toThrow();
+		});
+
+		it('should complete successfully when known_hosts file does not exist', async () => {
+			const instanceSettings = mock<InstanceSettings>({ n8nFolder: tempDir });
+			const testService = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			);
+
+			await expect(testService.resetKnownHosts()).resolves.toBeUndefined();
 		});
 	});
 });

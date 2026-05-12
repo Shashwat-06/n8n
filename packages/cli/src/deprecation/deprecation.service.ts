@@ -31,6 +31,10 @@ const SAFE_TO_REMOVE = 'Remove this environment variable; it is no longer needed
 @Service()
 export class DeprecationService {
 	private readonly deprecations: Deprecation[] = [
+		{
+			envVar: 'N8N_BINARY_DATA_STORAGE_PATH',
+			message: 'Use N8N_STORAGE_PATH instead.',
+		},
 		{ envVar: 'N8N_BINARY_DATA_TTL', message: SAFE_TO_REMOVE },
 		{ envVar: 'N8N_PERSISTED_BINARY_DATA_TTL', message: SAFE_TO_REMOVE },
 		{ envVar: 'EXECUTIONS_DATA_PRUNE_TIMEOUT', message: SAFE_TO_REMOVE },
@@ -67,7 +71,7 @@ export class DeprecationService {
 			envVar: 'EXECUTIONS_PROCESS',
 			message:
 				'n8n does not support `own` mode since May 2023. Please remove this environment variable to allow n8n to start. If you need the isolation and performance gains, please consider queue mode: https://docs.n8n.io/hosting/scaling/queue-mode/',
-			checkValue: (value: string) => value === 'own',
+			checkValue: (value: string | undefined): value is 'own' => value === 'own',
 		},
 	];
 
